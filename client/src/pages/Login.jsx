@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import "../assets/style/login.css";
+import { useNavigate } from "react-router-dom";
+import { AuthService } from "../service/AuthService";
 function Login() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -15,7 +18,20 @@ function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Login Data:", formData);
+    try {
+      console.log("Login Data:", formData);
+      AuthService.login(formData.email, formData.password).then((response) => {
+        if (response.data.success) {
+          console.log("Login successful:", response.data);
+          navigate("/dashboard");
+        } else {
+          console.error("Login failed:", response.data.message);
+          alert(response.data.message);
+        }
+      });
+    } catch (error) {
+      console.error("Error during login:", error);
+    }
   };
 
   return (
@@ -23,7 +39,7 @@ function Login() {
       <div className="login-form">
         <h2>Giriş Yap</h2>
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "15px" }}>
+          <div className="form-group">
             <label>Email:</label>
             <input
               type="email"
@@ -35,7 +51,7 @@ function Login() {
             />
           </div>
 
-          <div style={{ marginBottom: "15px" }}>
+          <div className="form-group">
             <label>Şifre:</label>
             <input
               type="password"

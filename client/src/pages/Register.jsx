@@ -1,24 +1,43 @@
-import React, { useState } from 'react'
+import React, { useState } from "react";
 
 import "../assets/style/register.css";
+import { AuthService } from "../service/AuthService";
+import { useNavigate } from "react-router";
 function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Register Data:', formData);
+    try {
+      AuthService
+        .register(formData.email, formData.password, formData.name)
+        .then((response) => {
+          if (response.data.success) {
+            console.log("Registration successful:", response.data);
+            alert("Kayıt başarılı! Giriş yapabilirsiniz.");
+            navigate("/login");
+          } else {
+            console.error("Registration failed:", response.data.message);
+            alert(response.data.message);
+          }
+        });
+    } catch (error) {
+      console.error("Error during registration:", error);
+      alert("Kayıt sırasında bir hata oluştu.");
+    }
   };
 
   return (
@@ -80,7 +99,7 @@ function Register() {
         </form>
       </div>
     </div>
-  )
+  );
 }
 
-export default Register
+export default Register;
