@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-
 import "../assets/style/register.css";
 import { AuthService } from "../service/AuthService";
 import { useNavigate } from "react-router";
+import { useDispatch } from 'react-redux';
+
 function Register() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -21,23 +23,34 @@ function Register() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      AuthService
-        .register(formData.email, formData.password, formData.name)
-        .then((response) => {
-          if (response.data.success) {
-            console.log("Registration successful:", response.data);
-            alert("Kayıt başarılı! Giriş yapabilirsiniz.");
-            navigate("/login");
-          } else {
-            console.error("Registration failed:", response.data.message);
-            alert(response.data.message);
-          }
-        });
-    } catch (error) {
-      console.error("Error during registration:", error);
-      alert("Kayıt sırasında bir hata oluştu.");
+    
+    // Şifre kontrolü
+    if (formData.password !== formData.confirmPassword) {
+      alert('Şifreler eşleşmiyor!');
+      return;
     }
+
+    if (formData.password.length < 6) {
+      alert('Şifre en az 6 karakter olmalıdır!');
+      return;
+    }
+
+    AuthService
+      .register(formData.email, formData.password, formData.name)
+      .then((response) => {
+        if (response.data.success) {
+          console.log("Registration successful:", response.data);
+     
+          alert("Kayıt başarılı! Giriş yapabilirsiniz.");
+          navigate("/login");
+        } else {
+          console.error("Registration failed:", response.data.message);
+          alert(response.data.message);
+        }
+      }).catch((error) => {
+        console.error("Registration request error:", error);
+        alert('Kayıt sırasında bir hata oluştu');
+      });
   };
 
   return (

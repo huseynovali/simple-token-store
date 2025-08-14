@@ -1,36 +1,42 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import "../assets/style/login.css";
+import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { AuthService } from "../service/AuthService";
+
 function Login() {
+  const { login, initialized, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [redirecting, setRedirecting] = useState(false); // Yönlendirme sırasında loading
+
+  useEffect(() => {
+    if (initialized && isAuthenticated) {
+      // Yönlendirme yapılacağı için loading göster
+      setRedirecting(true);
+      navigate("/");
+    }
+  }, [initialized, isAuthenticated, navigate]);
+
+  if (!initialized || redirecting) {
+    return <div className="loading">Yükleniyor...</div>;
+  }
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      console.log("Login Data:", formData);
-      AuthService.login(formData.email, formData.password).then((response) => {
-        if (response.data.success) {
-          console.log("Login successful:", response.data);
-          navigate("/dashboard");
-        } else {
-          console.error("Login failed:", response.data.message);
-          alert(response.data.message);
-        }
-      });
-    } catch (error) {
-      console.error("Error during login:", error);
+      const res = await login(formData.email, formData.password);
+      if (res.data.success) {
+        navigate("/");
+      } else {
+        alert(res.data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Giriş başarısız");
     }
   };
 

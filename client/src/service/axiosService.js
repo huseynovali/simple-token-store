@@ -1,33 +1,70 @@
-import axios from 'axios';
+import axios from "axios";
 
-axios.defaults.baseURL = 'http://localhost:3000/api';
+export const axiosPrivate = axios.create({
+  baseURL: "http://localhost:3000/api",
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+});
 
-axios.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        if(error.response.status === 401) {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
+let refreshInProgress = false;
+let subscribers = [];
+
+function onAccessTokenFetched(token) {
+  subscribers.forEach((cb) => cb(token));
+  subscribers = [];
+}
+
+function addSubscriber(cb) {
+  subscribers.push(cb);
+}
+
+export function attachAuthInterceptors(getAccessToken, refresh) {
+  axiosPrivate.interceptors.request.use((config) => {
+    const token = typeof getAccessToken === "function" ? getAccessToken() : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-);
+    return config;
+  });
 
-axios.interceptors.response.use(
+  axiosPrivate.interceptors.response.use(
     (response) => response,
-    (error) => {
-        if (error.response && error.response.status === 401) {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
-    }
-);
+    async (error) => {
+      const originalRequest = error.config;
+      if (error.response && error.response.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
 
-export const axiosPrivate= axios;
+        if (refreshInProgress) {
+          return new Promise((resolve, reject) => {
+            addSubscriber((token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(axiosPrivate(originalRequest));
+            });
+          });
+        }
+
+        refreshInProgress = true;
+        try {
+          const res = await refresh();
+          const newToken = res?.data?.data?.accessToken;
+          refreshInProgress = false;
+          if (!newToken) {
+            window.location.href = "/login";
+            return Promise.reject(error);
+          }
+          onAccessTokenFetched(newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return axiosPrivate(originalRequest);
+        } catch (err) {
+          refreshInProgress = false;
+          window.location.href = "/login";
+          return Promise.reject(err);
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+}

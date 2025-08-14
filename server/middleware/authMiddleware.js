@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'your-secret-key';
+
 const authMiddleware = (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -11,7 +13,7 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -27,7 +29,7 @@ const optionalAuth = (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
       req.user = decoded;
     }
     next();

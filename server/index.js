@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const authRouter = require("./router/auth");
+const productsRouter = require("./router/products");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth", authRouter);
+app.use("/api/products", productsRouter);
 
 app.use((req, res) => {
   res.status(404).json({

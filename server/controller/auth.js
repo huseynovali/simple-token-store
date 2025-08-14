@@ -8,7 +8,7 @@ const authController = {
       if (!email || !password) {
         return res.status(400).json({
           success: false,
-          message: "Email ve şifre zorunludur",
+          message: "Email or password is required",
         });
       }
 
@@ -16,7 +16,7 @@ const authController = {
       if (!emailRegex.test(email)) {
         return res.status(400).json({
           success: false,
-          message: "Geçerli bir email adresi giriniz",
+          message: "Please enter a valid email address",
         });
       }
 
@@ -32,7 +32,7 @@ const authController = {
       console.error("AuthController login error:", error);
       return res.status(500).json({
         success: false,
-        message: "Sunucu hatası",
+        message: "Server error",
         error: error.message,
       });
     }
@@ -45,7 +45,7 @@ const authController = {
       if (!email || !password || !name) {
         return res.status(400).json({
           success: false,
-          message: "Email, şifre ve isim zorunludur",
+          message: "Email, password, and name are required",
         });
       }
 
@@ -53,14 +53,14 @@ const authController = {
       if (!emailRegex.test(email)) {
         return res.status(400).json({
           success: false,
-          message: "Geçerli bir email adresi giriniz",
+          message: "Please enter a valid email address",
         });
       }
 
       if (password.length < 6) {
         return res.status(400).json({
           success: false,
-          message: "Şifre en az 6 karakter olmalıdır",
+          message: "Password must be at least 6 characters long",
         });
       }
 
@@ -76,39 +76,29 @@ const authController = {
       console.error("AuthController register error:", error);
       return res.status(500).json({
         success: false,
-        message: "Sunucu hatası",
+        message: "Server error",
         error: error.message,
       });
     }
   },
 
   refreshToken: async (req, res) => {
-    try {
-      const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.refreshToken;
 
-      if (!refreshToken) {
-        return res.status(401).json({
-          success: false,
-          message: "Refresh token bulunamadı",
-        });
-      }
-
-      const result = await authService.refreshAccessToken(refreshToken, res);
-
-      return res.status(result.statusCode).json({
-        success: result.success,
-        message: result.message,
-        data: result.data || null,
-        ...(result.error && { error: result.error }),
-      });
-    } catch (error) {
-      console.error("AuthController refreshToken error:", error);
-      return res.status(500).json({
+    if (!refreshToken) {
+      return res.status(401).json({
         success: false,
-        message: "Sunucu hatası",
-        error: error.message,
+        message: "Refresh token not found",
       });
     }
+
+    const result = await authService.refreshAccessToken(refreshToken);
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
+      data: result.data || null,
+      ...(result.error && { error: result.error }),
+    });
   },
 
   logout: async (req, res) => {
@@ -123,16 +113,11 @@ const authController = {
       console.error("AuthController logout error:", error);
       return res.status(500).json({
         success: false,
-        message: "Sunucu hatası",
+        message: "Server error",
         error: error.message,
       });
     }
   },
-
-  getAccessToken: async (req, res) => {
-
-   }
-
 };
 
 module.exports = authController;

@@ -2,6 +2,10 @@ const pool = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+// Use distinct secrets for access and refresh tokens
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || "access_default_secret";
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET || "refresh_default_secret";
+
 const authService = {
   login: async (email, password, res) => {
     try {
@@ -34,10 +38,10 @@ const authService = {
       if (res) {
         res.cookie("refreshToken", refreshToken, {
           httpOnly: true,
-          secure: false, // Development için false
-          sameSite: "lax", // Cross-origin için lax
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 gün
-          path: '/' // Cookie path'i belirt
+          secure: false,
+          sameSite: "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: "/",
         });
       }
 
@@ -101,7 +105,7 @@ const authService = {
           secure: false, // Development için false
           sameSite: "lax", // Cross-origin için lax
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 gün
-          path: '/' // Cookie path'i belirt
+          path: "/", // Cookie path'i belirt
         });
       }
 
@@ -125,52 +129,30 @@ const authService = {
     }
   },
 
-  refreshAccessToken: async (refreshToken, res) => {
+  // Refresh access token: DO NOT send the response here; return a structured result
+  refreshAccessToken: async (refreshToken) => {
     try {
-      const decoded = jwt.verify(
-        refreshToken,
-        process.env.JWT_SECRET || "default_secret_key"
+      const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+      const newAccessToken = jwt.sign(
+        { userId: decoded.userId },
+        ACCESS_TOKEN_SECRET,
+        { expiresIn: "15m" }
       );
-
-      const userQuery = "SELECT id, email, name FROM users WHERE id = $1";
-      const userResult = await pool.query(userQuery, [decoded.userId]);
-
-      if (userResult.rows.length === 0) {
-        return {
-          success: false,
-          message: "Kullanıcı bulunamadı",
-          statusCode: 404,
-        };
-      }
-
-      const user = userResult.rows[0];
-      const newAccessToken = authService.createAccessToken(user.id);
-      const newRefreshToken = authService.createRefreshToken(user.id);
-
-      if (res) {
-        res.cookie("refreshToken", newRefreshToken, {
-          httpOnly: true,
-          secure: false, // Development için false
-          sameSite: "lax", // Cross-origin için lax
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 gün
-          path: '/' // Cookie path'i belirt
-        });
-      }
 
       return {
         success: true,
-        message: "Token yenilendi",
+        message: "Access token yenilendi",
         statusCode: 200,
         data: {
           accessToken: newAccessToken,
-          user: user,
         },
       };
     } catch (error) {
+      console.error("refreshAccessToken error:", error.message);
       return {
         success: false,
-        message: "Geçersiz refresh token",
-        statusCode: 401,
+        message: "Invalid refresh token",
+        statusCode: 403,
         error: error.message,
       };
     }
@@ -178,13 +160,12 @@ const authService = {
 
   logout: async (res) => {
     try {
-      // Refresh token cookie'sini temizle
       if (res) {
         res.clearCookie("refreshToken", {
           httpOnly: true,
-          secure: false, // Development için false
-          sameSite: "lax", // Cross-origin için lax
-          path: '/' // Cookie path'i belirt
+          secure: false,
+          sameSite: "lax",
+          path: "/",
         });
       }
 
@@ -206,15 +187,15 @@ const authService = {
   createAccessToken: (userId) => {
     return jwt.sign(
       { userId: userId },
-      process.env.JWT_SECRET || "default_secret_key",
-      { expiresIn: "3h" }
+      ACCESS_TOKEN_SECRET,
+      { expiresIn: "3sec" }
     );
   },
   createRefreshToken: (userId) => {
     return jwt.sign(
       { userId: userId },
-      process.env.JWT_SECRET || "default_secret_key",
-      { expiresIn: "7d" }
+      REFRESH_TOKEN_SECRET,
+      { expiresIn: "7sec" }
     );
   },
 };
